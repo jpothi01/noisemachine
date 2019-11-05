@@ -1,0 +1,8 @@
+[package]
+name = "noisemachine"
+version = "0.1.0"
+authors = ["John Pothier <john.pothier@outlook.com>"]
+edition = "2018"
+
+[dependencies]
+portaudio = "0.7"
