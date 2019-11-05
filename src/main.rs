@@ -8,11 +8,11 @@ extern crate portaudio;
 use portaudio as pa;
 use std::collections::VecDeque;
 use rand::distributions::Distribution;
-use statrs::distribution::{Normal};
+use statrs::distribution::{Normal, Uniform};
 
 const SAMPLE_RATE: f64 = 44_100.0;
 const CHANNELS: i32 = 2;
-const FRAMES: u32 = 1024;
+const FRAMES: u32 = 4096;
 const INTERLEAVED: bool = true;
 
 fn main() {
@@ -26,6 +26,10 @@ fn main() {
 
 fn generate_sample(distribution: &mut impl Distribution<f64>, mut rng: &mut impl rand::Rng) -> f64 {
     distribution.sample(&mut rng)
+}
+
+fn pink_low_pass(current_input: f32, previous_output: f32, alpha: f32) -> f32 {
+    previous_output + (current_input - previous_output) * alpha
 }
 
 fn run() -> Result<(), pa::Error> {
@@ -67,8 +71,9 @@ fn run() -> Result<(), pa::Error> {
     // We'll use this buffer to transfer samples from the input stream to the output stream.
     let mut buffer: VecDeque<f32> = VecDeque::with_capacity(FRAMES as usize * CHANNELS as usize);
 
-    let mut distribution = Normal::new(0.0, 0.3).unwrap();
+    let mut distribution = Uniform::new(0.0, 0.3).unwrap();
     let mut rng = rand::rngs::ThreadRng::default();
+    let mut previous_output = 0f32;
 
     stream.start()?;
 
@@ -126,7 +131,9 @@ fn run() -> Result<(), pa::Error> {
 
             stream.write(write_frames, |output| {
                 for i in 0..n_write_samples {
-                    output[i] = generate_sample(&mut distribution, &mut rng) as f32;
+                    let generated_sample = generate_sample(&mut distribution, &mut rng) as f32;
+                    previous_output = pink_low_pass(generated_sample, previous_output, 0.1f32);
+                    output[i] = previous_output;
                 }
                 println!("Wrote {:?} frames to the output stream.", out_frames);
             })?;
