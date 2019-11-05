@@ -6,3 +6,5 @@ edition = "2018"
 
 [dependencies]
 portaudio = "0.7"
+statrs = "0.12"
+rand = "0.7"

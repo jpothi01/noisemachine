@@ -7,10 +7,12 @@ extern crate portaudio;
 
 use portaudio as pa;
 use std::collections::VecDeque;
+use rand::distributions::Distribution;
+use statrs::distribution::{Normal};
 
 const SAMPLE_RATE: f64 = 44_100.0;
 const CHANNELS: i32 = 2;
-const FRAMES: u32 = 256;
+const FRAMES: u32 = 1024;
 const INTERLEAVED: bool = true;
 
 fn main() {
@@ -20,6 +22,10 @@ fn main() {
             eprintln!("Example failed with the following: {:?}", e);
         }
     }
+}
+
+fn generate_sample(distribution: &mut impl Distribution<f64>, mut rng: &mut impl rand::Rng) -> f64 {
+    distribution.sample(&mut rng)
 }
 
 fn run() -> Result<(), pa::Error> {
@@ -60,6 +66,9 @@ fn run() -> Result<(), pa::Error> {
 
     // We'll use this buffer to transfer samples from the input stream to the output stream.
     let mut buffer: VecDeque<f32> = VecDeque::with_capacity(FRAMES as usize * CHANNELS as usize);
+
+    let mut distribution = Normal::new(0.0, 0.3).unwrap();
+    let mut rng = rand::rngs::ThreadRng::default();
 
     stream.start()?;
 
@@ -117,7 +126,7 @@ fn run() -> Result<(), pa::Error> {
 
             stream.write(write_frames, |output| {
                 for i in 0..n_write_samples {
-                    output[i] = buffer.pop_front().unwrap();
+                    output[i] = generate_sample(&mut distribution, &mut rng) as f32;
                 }
                 println!("Wrote {:?} frames to the output stream.", out_frames);
             })?;
